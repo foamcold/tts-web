@@ -74,6 +74,26 @@ npm run dev
 3.  **访问应用**:
     在浏览器中打开 [http://localhost:3000](http://localhost:3000) 即可访问。
 
+
+### 使用 Dockerfile 单独部署
+
+如果您不想使用 `docker-compose`，也可以直接通过 `Dockerfile` 来构建和运行应用。
+
+1.  **构建 Docker 镜像**:
+    在项目根目录下，运行以下命令来构建镜像：
+    ```bash
+    docker build -t tts-web .
+    ```
+
+2.  **运行 Docker 容器**:
+    使用刚刚构建的镜像来启动一个容器：
+    ```bash
+    docker run -d -p 3000:3000 --name tts-web-app tts-web
+    ```
+    这将在后台启动一个名为 `tts-web-app` 的容器，并将应用的 3000 端口映射到主机的 3000 端口。
+
+3.  **访问应用**:
+    在浏览器中打开 [http://localhost:3000](http://localhost:3000) 即可访问。
 ## 📂 项目结构
 
 ```
