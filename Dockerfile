@@ -22,6 +22,10 @@ RUN npx prisma generate
 # 构建 Next.js 应用
 RUN npm run build
 
+# 编译 worker 并复制到 .next/server
+RUN npx tsc --outDir .next/server/lib/tts-engine lib/tts-engine/worker.ts
+RUN cp lib/tts-engine/worker-entry.mjs .next/server/worker-entry.mjs
+
 # ---- 生产镜像阶段 ----
 FROM node:20-slim AS runner
 
@@ -38,7 +42,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/lib ./lib
 
 # 安装 openssl
 RUN apt-get update && apt-get install -y openssl
