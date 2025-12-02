@@ -1,6 +1,6 @@
-import vm from 'vm';
-import { JavaShim } from './java-shim.ts';
-import { TtsrvShim } from './ttsrv-shim.ts';
+import * as vm from 'vm';
+import { JavaShim } from './java-shim';
+import { TtsrvShim } from './ttsrv-shim';
 
 export interface TTSPlugin {
   name: string;

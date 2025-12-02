@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import CryptoJS from 'crypto-js';
 import request from 'sync-request';
 

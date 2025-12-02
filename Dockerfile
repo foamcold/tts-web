@@ -23,7 +23,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # 编译 worker 并复制到 .next/server
-RUN npx tsc --outDir .next/server/lib/tts-engine lib/tts-engine/worker.ts
+RUN npx tsc --outDir .next/server --esModuleInterop --resolveJsonModule --module nodenext --moduleResolution nodenext lib/tts-engine/worker.ts
 RUN cp lib/tts-engine/worker-entry.mjs .next/server/worker-entry.mjs
 
 # ---- 生产镜像阶段 ----
