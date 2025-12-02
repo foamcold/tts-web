@@ -1,12 +1,17 @@
 // lib/worker-runner.ts
+import path from 'path';
 import { Worker } from 'worker_threads';
 import { config } from '@/lib/config';
 
 export function runPluginInWorker(workerData: any): Promise<any> {
   return new Promise((resolve, reject) => {
-    // Point to the pure JS entry point, using .mjs to enforce ESM mode.
-    // We rely on this file existing in the same directory structure relative to the runner.
-    const worker = new Worker(new URL('./tts-engine/worker-entry.mjs', import.meta.url), {
+    // In production, the worker entry point is compiled and placed in the .next/server directory.
+    // We use an absolute path to ensure it's found correctly.
+    const workerPath = process.env.NODE_ENV === 'production'
+      ? path.join(process.cwd(), '.next', 'server', 'lib', 'tts-engine', 'worker-entry.mjs')
+      : path.join(process.cwd(), 'lib', 'tts-engine', 'worker-entry.mjs');
+      
+    const worker = new Worker(workerPath, {
       workerData,
       resourceLimits: config.worker.resourceLimits,
     });
