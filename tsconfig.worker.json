@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": ".next/server",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noEmit": false
+  },
+  "include": [
+    "lib/tts-engine/**/*.ts"
+  ]
+}

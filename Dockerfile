@@ -22,6 +22,10 @@ RUN npx prisma generate
 # 构建 Next.js 应用
 RUN npm run build
 
+# 编译 worker 并复制到 .next/server
+RUN npx tsc -p tsconfig.worker.json
+RUN cp lib/tts-engine/worker-entry.mjs .next/server/lib/tts-engine/worker-entry.mjs
+
 # ---- 生产镜像阶段 ----
 FROM node:20-slim AS runner
 
