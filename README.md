@@ -36,7 +36,7 @@ cd tts-web
 安装项目依赖：
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### 3. 初始化数据库
@@ -50,7 +50,7 @@ npx prisma migrate dev
 ### 4. 运行开发服务器
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 现在，在浏览器中打开 [http://localhost:3000](http://localhost:3000) 即可看到应用界面。
