@@ -1,6 +1,6 @@
 // lib/tts-engine/worker.ts
 import { parentPort, workerData } from 'worker_threads';
-import { PluginExecutor } from './plugin-executor.js';
+import { PluginExecutor } from './plugin-executor';
 
 /**
  * 这个 worker 脚本在一个独立的线程中运行，以隔离插件执行环境
