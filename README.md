@@ -29,7 +29,7 @@ TTS Web 是一个功能强大、支持插件化的文本转语音（Text-to-Spee
 克隆本项目到本地：
 
 ```bash
-git clone https://github.com/your-username/tts-web.git
+git clone https://github.com/foamcold/tts-web.git
 cd tts-web
 ```
 
@@ -54,6 +54,24 @@ npm run dev
 ```
 
 现在，在浏览器中打开 [http://localhost:3000](http://localhost:3000) 即可看到应用界面。
+
+## 本地生产环境部署
+
+如果您想在本地模拟生产环境运行，可以按照以下步骤操作：
+
+1.  **构建应用**:
+    执行以下命令来为生产环境构建 Next.js 应用：
+    ```bash
+    npm run build
+    ```
+
+2.  **启动生产服务器**:
+    构建完成后，使用以下命令启动生产服务器：
+    ```bash
+    npm start
+    ```
+
+    现在，在浏览器中打开 [http://localhost:3000](http://localhost:3000) 即可访问为生产环境优化的应用。
 
 ## 🐳 Docker 部署
 
