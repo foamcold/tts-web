@@ -1,0 +1,46 @@
+# ---- 依赖安装与构建阶段 ----
+FROM node:20-slim AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制 package.json 和 package-lock.json
+COPY package*.json ./
+
+# 安装所有依赖
+RUN npm install
+
+# 复制项目源代码
+COPY . .
+
+# 生成 Prisma Client
+RUN npx prisma generate
+
+# 构建 Next.js 应用
+RUN npm run build
+
+# ---- 生产镜像阶段 ----
+FROM node:20-slim AS runner
+
+# 设置工作目录
+WORKDIR /app
+
+# 设置环境变量
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# 从构建阶段复制必要的文件
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/prisma ./prisma
+
+# 暴露端口
+EXPOSE 3000
+
+# 运行数据库迁移
+RUN npx prisma migrate deploy
+
+# 启动应用的命令
+CMD ["npm", "start"]

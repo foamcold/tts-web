@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Plugin {
+  id          String   @id @default(uuid())
+  pluginId    String   @unique
+  name        String
+  author      String?
+  version     Int      @default(1)
+  code        String   // 存储 JS 代码
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 插件特有的配置存储 (JSON)
+  config      String?  @default("{}")
+}
+
+model Config {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model TTSCache {
+  id        String   @id @default(uuid())
+  hash      String   @unique // 参数的 MD5 哈希
+  audio     Bytes    // 音频数据
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* 强制 antd Select 下拉菜单在深色主题下的文字颜色 */
+/* 设置下拉菜单的基础文字颜色为白色 */
+.ant-select-dropdown {
+  color: white;
+}
+
+/* 确保已选中的项目（通常背景色会变）文字也是白色，以保证对比度 */
+/* antd 默认选中项背景是蓝色，文字是白色，此条规则确保在自定义主题时也生效 */
+.ant-select-item-option-selected {
+  color: white !important;
+}
+
+/* 移除了针对 :hover 的规则，以允许 antd 默认的悬浮效果 */
