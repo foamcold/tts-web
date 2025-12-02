@@ -13,6 +13,9 @@ RUN npm install
 # 复制项目源代码
 COPY . .
 
+# 复制 entrypoint 脚本
+COPY entrypoint.sh .
+
 # 生成 Prisma Client
 RUN npx prisma generate
 
@@ -36,11 +39,20 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
 
+# 安装 openssl
+RUN apt-get update && apt-get install -y openssl
+
+# 复制 entrypoint 脚本
+COPY --from=builder /app/entrypoint.sh .
+
+# 赋予执行权限
+RUN chmod +x ./entrypoint.sh
+
 # 暴露端口
 EXPOSE 3000
 
-# 运行数据库迁移
-RUN npx prisma migrate deploy
+# 设置 entrypoint
+ENTRYPOINT ["./entrypoint.sh"]
 
 # 启动应用的命令
 CMD ["npm", "start"]
