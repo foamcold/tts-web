@@ -36,7 +36,7 @@ cd tts-web
 安装项目依赖：
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 3. 初始化数据库
@@ -50,7 +50,7 @@ npx prisma migrate dev
 ### 4. 运行开发服务器
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 现在，在浏览器中打开 [http://localhost:3000](http://localhost:3000) 即可看到应用界面。
@@ -62,13 +62,13 @@ npm run dev
 1.  **构建应用**:
     执行以下命令来为生产环境构建 Next.js 应用：
     ```bash
-    npm run build
+    pnpm build
     ```
 
 2.  **启动生产服务器**:
     构建完成后，使用以下命令启动生产服务器：
     ```bash
-    npm start
+    pnpm start
     ```
 
     现在，在浏览器中打开 [http://localhost:3000](http://localhost:3000) 即可访问为生产环境优化的应用。

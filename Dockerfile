@@ -5,10 +5,11 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # 复制 package.json 和 package-lock.json
-COPY package*.json ./
+# 复制 package.json 和 pnpm-lock.yaml
+COPY package.json pnpm-lock.yaml* ./
 
-# 安装所有依赖
-RUN npm install
+# 安装 pnpm 并安装依赖
+RUN npm install -g pnpm && pnpm install
 
 # 复制项目源代码
 COPY . .
@@ -20,7 +21,7 @@ COPY entrypoint.sh .
 RUN npx prisma generate
 
 # 构建 Next.js 应用
-RUN npm run build
+RUN pnpm run build
 
 # 编译 worker 并复制到 .next/server
 RUN npx tsc -p tsconfig.worker.json
@@ -59,4 +60,4 @@ EXPOSE 3000
 ENTRYPOINT ["./entrypoint.sh"]
 
 # 启动应用的命令
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
