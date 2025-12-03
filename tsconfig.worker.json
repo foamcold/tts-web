@@ -9,8 +9,8 @@
     "paths": {
       "@/*": ["./*"]
     },
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "outDir": ".next/server",
     "rootDir": ".",
     "noEmit": false
