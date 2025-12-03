@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import CryptoJS from 'crypto-js';
-const request = require('sync-request');
+import request from 'sync-request';
 
 /**
  * 模拟 ttsrv 全局对象
