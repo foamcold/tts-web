@@ -46,7 +46,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
 
 # 安装 openssl
-RUN apt-get update && apt-get install -y openssl
+RUN apt-get update && apt-get install -y openssl && npm install -g pnpm
 
 # 复制 entrypoint 脚本
 COPY --from=builder /app/entrypoint.sh .
