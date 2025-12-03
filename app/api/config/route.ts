@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       // 获取所有配置
       const configs = await prisma.config.findMany();
       const configMap: Record<string, string> = {};
-      configs.forEach(c => {
+      configs.forEach((c: { key: string; value: string }) => {
         configMap[c.key] = c.value;
       });
       return NextResponse.json(configMap);
