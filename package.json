@@ -43,5 +43,15 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "allow-build": [
+      "@prisma/client",
+      "postinstall-postinstall",
+      "prisma",
+      "sharp",
+      "unrs-resolver",
+      "yarn"
+    ]
   }
 }
