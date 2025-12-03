@@ -16,6 +16,7 @@ COPY . .
 
 # 复制 entrypoint 脚本
 COPY entrypoint.sh .
+RUN sed -i 's/\r$//' ./entrypoint.sh
 
 # 生成 Prisma Client
 RUN npx prisma generate
@@ -49,6 +50,7 @@ RUN apt-get update && apt-get install -y openssl
 
 # 复制 entrypoint 脚本
 COPY --from=builder /app/entrypoint.sh .
+RUN sed -i 's/\r$//' ./entrypoint.sh
 
 # 赋予执行权限
 RUN chmod +x ./entrypoint.sh
