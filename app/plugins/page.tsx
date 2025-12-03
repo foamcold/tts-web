@@ -7,8 +7,7 @@ import MainLayout from '@/components/MainLayout';
 import PluginList from '@/components/PluginList';
 import PluginConfigModal from '@/components/PluginConfigModal';
 import { getPlugins, deletePlugin, updatePlugin, importPlugins } from '@/lib/services/api';
-
-type Plugin = Awaited<ReturnType<typeof getPlugins>>[number];
+import { Plugin } from '@/types';
 
 const { Title, Paragraph } = Typography;
 const { Dragger } = Upload;

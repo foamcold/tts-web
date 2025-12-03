@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { App, Modal, Form, Input, InputNumber } from 'antd';
-import type { Plugin } from '@prisma/client';
+import type { Plugin } from '@/types';
 import { updatePlugin } from '@/lib/services/api';
 
 interface PluginConfigModalProps {

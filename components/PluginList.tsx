@@ -2,7 +2,7 @@
 import React from 'react';
 import { Table, Switch, Button, Popconfirm, Tag, Tooltip, Space } from 'antd';
 import { DeleteOutlined, SettingOutlined } from '@ant-design/icons';
-import type { Plugin } from '@prisma/client';
+import type { Plugin } from '@/types';
 import type { TableProps } from 'antd';
 
 interface Props {
