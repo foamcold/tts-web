@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build && tsc -p tsconfig.worker.json",
     "start": "next start",
+    "start:prod": "npx prisma migrate deploy && next start",
     "lint": "eslint"
   },
   "pnpm": {
