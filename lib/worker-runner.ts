@@ -5,16 +5,25 @@ import { config } from '@/lib/config';
 
 export function runPluginInWorker(workerData: any): Promise<any> {
   return new Promise((resolve, reject) => {
-    // In production, the worker entry point is compiled and placed in the .next/server directory.
-    // We use an absolute path to ensure it's found correctly.
-    const workerPath = process.env.NODE_ENV === 'production'
-      ? path.join(process.cwd(), '.next', 'server', 'lib', 'tts-engine', 'worker-entry.mjs')
-      : path.join(process.cwd(), 'lib', 'tts-engine', 'worker-entry.mjs');
-      
-    const worker = new Worker(workerPath, {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    // 在开发模式下，我们直接使用 ts-node/esm 加载器来运行 .ts 文件。
+    // 在生产模式下，我们运行由 `next build` 编译出的 .js 文件。
+    const workerPath = isProd
+      ? path.join(process.cwd(), '.next', 'server', 'lib', 'tts-engine', 'worker.js')
+      : path.join(process.cwd(), 'lib', 'tts-engine', 'worker.ts');
+
+    const workerOptions: import('worker_threads').WorkerOptions = {
       workerData,
       resourceLimits: config.worker.resourceLimits,
-    });
+    };
+
+    if (!isProd) {
+      // 使用 ts-node/esm 加载器，这是在 worker 中运行 TS 的现代、可靠方法。
+      workerOptions.execArgv = ['--loader', 'ts-node/esm'];
+    }
+      
+    const worker = new Worker(workerPath, workerOptions);
 
     // 从配置文件读取超时时间
     const timeout = setTimeout(() => {
