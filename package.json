@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "tsc -p tsconfig.worker.json && next build",
+    "build": "next build && tsc -p tsconfig.worker.json",
     "start": "next start",
     "lint": "eslint"
   },
