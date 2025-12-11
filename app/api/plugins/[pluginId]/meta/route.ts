@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const startTime = Date.now();
   const url = new URL(request.url);
-  const path = url.pathname + url.search;
+  const path = decodeURIComponent(url.pathname + url.search);
   
   logger.info(`收到请求 GET ${path}`);
   

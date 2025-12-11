@@ -16,7 +16,7 @@ export function withErrorHandler(handler: ApiHandler, options: HandlerOptions = 
   return async (req: NextRequest, context: { params: any }) => {
     const startTime = Date.now();
     const url = new URL(req.url);
-    const path = url.pathname + url.search;
+    const path = decodeURIComponent(url.pathname + url.search);
     
     logger.info(`收到请求 ${req.method} ${path}`);
     

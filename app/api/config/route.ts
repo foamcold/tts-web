@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger';
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const url = new URL(request.url);
-  const path = url.pathname + url.search;
+  const path = decodeURIComponent(url.pathname + url.search);
   
   logger.info(`收到请求 GET ${path}`);
   
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const url = new URL(request.url);
-  const path = url.pathname + url.search;
+  const path = decodeURIComponent(url.pathname + url.search);
   
   logger.info(`收到请求 POST ${path}`);
   
