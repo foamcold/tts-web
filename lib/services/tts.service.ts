@@ -19,6 +19,7 @@ export interface TTSParams {
   volume?: number;
   pitch?: number;
   debug?: boolean;
+  signal?: AbortSignal; // 添加 AbortSignal
   [key: string]: any; // 捕获其他配置项
 }
 
@@ -107,8 +108,21 @@ async function getQueueTimeoutMs(): Promise<number> {
 /**
  * 延迟函数
  */
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      return reject(new Error('Aborted'));
+    }
+
+    const timer = setTimeout(resolve, ms);
+    
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(new Error('Aborted'));
+      }, { once: true });
+    }
+  });
 }
 
 /**
@@ -168,12 +182,19 @@ async function cleanupCache(maxCount: number) {
 async function executeWithRetry(
   pluginCode: string,
   processedParams: ProcessedParams,
-  retryConfig: RetryConfig
+  retryConfig: RetryConfig,
+  signal?: AbortSignal
 ): Promise<{ audioBuffer: Buffer; generationTime: number }> {
   let lastError: Error = new Error('Unknown error');
   const totalStartTime = Date.now();
 
   for (let attempt = 1; attempt <= retryConfig.maxRetries; attempt++) {
+    // 在每次尝试前检查是否取消
+    if (signal?.aborted) {
+      logger.info('TTS生成任务被取消，停止重试');
+      throw new Error('Request aborted by client');
+    }
+
     try {
       const attemptStartTime = Date.now();
       
@@ -216,7 +237,15 @@ async function executeWithRetry(
         const delay = Math.max(0, retryConfig.retryIntervalMs + jitter);
         
         logger.info(`等待 ${delay}ms (${retryConfig.retryIntervalMs}ms ±1s) 后重试...`);
-        await sleep(delay);
+        try {
+          await sleep(delay, signal);
+        } catch (e) {
+          if (signal?.aborted) {
+            logger.info('等待重试期间任务被取消');
+            throw new Error('Request aborted by client');
+          }
+          throw e;
+        }
       }
     }
   }
@@ -257,6 +286,10 @@ async function preprocessParams(params: TTSParams): Promise<{
     debug = false,
     ...otherConfig
   } = effectiveParams;
+
+  // 排除 signal，避免将其作为普通配置项处理
+  // @ts-ignore - signal is not in otherConfig type but exists in params
+  if (otherConfig.signal) delete otherConfig.signal;
 
   // 4. 校验 pluginId 是否存在
   if (!pluginId) {
@@ -450,7 +483,11 @@ async function generateSpeechQueued(params: TTSParams): Promise<TTSSuccessResult
     plugin.pluginId,
     async () => {
       // 这个函数在队列轮到时执行
-      const { audioBuffer } = await executeWithRetry(plugin.code, processedParams, retryConfig);
+      // 再次检查信号，因为在队列中等待时可能已被取消
+      if (params.signal?.aborted) {
+        throw new Error('Request aborted by client');
+      }
+      const { audioBuffer } = await executeWithRetry(plugin.code, processedParams, retryConfig, params.signal);
       return audioBuffer;
     },
     queueTimeoutMs

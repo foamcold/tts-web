@@ -20,7 +20,9 @@ const TTSSchema = z.object({
 // 统一的请求处理 handler
 const ttsHandler = async (req: NextRequest, context?: { params: any }, parsedData?: any) => {
   // 经过 withErrorHandler 处理后，parsedData 必然存在且已校验
-  const result = await generateSpeech(parsedData);
+  // 将 req.signal 注入到参数中，以便 service 层可以监听客户端断开
+  const ttsParams = { ...parsedData, signal: req.signal };
+  const result = await generateSpeech(ttsParams);
 
   
   // 根据结果类型返回响应
