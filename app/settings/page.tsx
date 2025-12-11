@@ -19,6 +19,16 @@ const LOG_LEVEL_OPTIONS = [
   { value: 'ERROR', label: 'ERROR - 错误级别（仅输出错误）' },
 ];
 
+// 默认系统配置
+const DEFAULT_SYSTEM_CONFIG = {
+  cacheEnabled: true,
+  cacheMaxCount: 100,
+  logLevel: 'INFO',
+  retryMaxCount: 10,
+  retryIntervalSeconds: 10,
+  queueTimeoutSeconds: 300,
+};
+
 export default function SettingsPage() {
   const [form] = Form.useForm();
   const [systemForm] = Form.useForm();
@@ -98,19 +108,30 @@ export default function SettingsPage() {
 
       // 加载系统配置
       const systemConfig = await getConfig('system-config');
-      if (systemConfig && Object.keys(systemConfig).length > 0) {
-        systemForm.setFieldsValue(systemConfig);
-      } else {
-        // 设置默认值
-        systemForm.setFieldsValue({
-          cacheEnabled: true,
-          cacheMaxCount: 1000,
-          logLevel: 'INFO',
-          retryMaxCount: 10,
-          retryIntervalSeconds: 5,
-          queueTimeoutSeconds: 300,
+      
+      // 合并数据库配置和默认配置
+      const mergedConfig: any = { ...DEFAULT_SYSTEM_CONFIG };
+      
+      if (systemConfig) {
+        Object.keys(systemConfig).forEach(key => {
+          const val = systemConfig[key];
+          if (val !== null && val !== undefined && val !== '') {
+            // 确保数字类型的字段被正确转换，防止字符串导致 InputNumber 校验失败
+            if (['cacheMaxCount', 'retryMaxCount', 'retryIntervalSeconds', 'queueTimeoutSeconds'].includes(key)) {
+              const numVal = Number(val);
+              if (!isNaN(numVal)) {
+                mergedConfig[key] = numVal;
+              }
+            } else {
+              mergedConfig[key] = val;
+            }
+          }
         });
       }
+      
+      // 重置表单并设置新值
+      systemForm.resetFields();
+      systemForm.setFieldsValue(mergedConfig);
     } catch (e) {
       // error handled in api service
     }
@@ -180,14 +201,7 @@ export default function SettingsPage() {
           form={systemForm}
           layout="vertical"
           onFinish={onSystemFinish}
-          initialValues={{
-            cacheEnabled: true,
-            cacheMaxCount: 1000,
-            logLevel: 'INFO',
-            retryMaxCount: 10,
-            retryIntervalSeconds: 5,
-            queueTimeoutSeconds: 300,
-          }}
+          initialValues={DEFAULT_SYSTEM_CONFIG}
         >
           <Title level={5} style={{ marginBottom: 16 }}>缓存设置</Title>
           <Paragraph type="secondary" style={{ marginBottom: 16 }}>
@@ -204,23 +218,22 @@ export default function SettingsPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                label="缓存数量上限"
-                name="cacheMaxCount"
-                rules={[
-                  { required: true, message: '请输入缓存数量' },
-                  { type: 'number', min: 0, max: 100000, message: '请输入0-100000之间的数字' }
-                ]}
-              >
+              <Form.Item label="缓存数量上限">
                 <Space.Compact style={{ width: '100%' }}>
-                  <InputNumber
-                    min={0}
-                    max={100000}
-                    style={{ width: '100%' }}
-                    placeholder="默认: 1000"
-                    disabled={!cacheEnabled}
-                  />
-                  <Button disabled style={{ pointerEvents: 'none' }}>条</Button>
+                  <Form.Item
+                    name="cacheMaxCount"
+                    noStyle
+                    rules={[{ required: true, message: '请输入缓存数量' }]}
+                  >
+                    <InputNumber
+                      min={0}
+                      max={100000}
+                      style={{ width: '100%' }}
+                      placeholder="默认: 100"
+                      disabled={!cacheEnabled}
+                    />
+                  </Form.Item>
+                  <Button disabled style={{ pointerEvents: 'none', color: 'rgba(0, 0, 0, 0.45)', backgroundColor: '#fafafa', borderColor: '#d9d9d9' }}>条</Button>
                 </Space.Compact>
               </Form.Item>
             </Col>
@@ -237,21 +250,22 @@ export default function SettingsPage() {
             <Col span={12}>
               <Form.Item
                 label="队列等待超时"
-                name="queueTimeoutSeconds"
                 extra="请求在队列中的最大等待时间（30-600秒）"
-                rules={[
-                  { required: true, message: '请输入超时时间' },
-                  { type: 'number', min: 30, max: 600, message: '请输入30-600之间的数字' }
-                ]}
               >
                 <Space.Compact style={{ width: '100%' }}>
-                  <InputNumber
-                    min={30}
-                    max={600}
-                    style={{ width: '100%' }}
-                    placeholder="默认: 300"
-                  />
-                  <Button disabled style={{ pointerEvents: 'none' }}>秒</Button>
+                  <Form.Item
+                    name="queueTimeoutSeconds"
+                    noStyle
+                    rules={[{ required: true, message: '请输入超时时间' }]}
+                  >
+                    <InputNumber
+                      min={30}
+                      max={600}
+                      style={{ width: '100%' }}
+                      placeholder="默认: 300"
+                    />
+                  </Form.Item>
+                  <Button disabled style={{ pointerEvents: 'none', color: 'rgba(0, 0, 0, 0.45)', backgroundColor: '#fafafa', borderColor: '#d9d9d9' }}>秒</Button>
                 </Space.Compact>
               </Form.Item>
             </Col>
@@ -268,42 +282,44 @@ export default function SettingsPage() {
             <Col span={12}>
               <Form.Item
                 label="错误重试次数"
-                name="retryMaxCount"
                 extra="TTS 生成失败时的最大重试次数（1-100）"
-                rules={[
-                  { required: true, message: '请输入重试次数' },
-                  { type: 'number', min: 1, max: 100, message: '请输入1-100之间的数字' }
-                ]}
               >
                 <Space.Compact style={{ width: '100%' }}>
-                  <InputNumber
-                    min={1}
-                    max={100}
-                    style={{ width: '100%' }}
-                    placeholder="默认: 10"
-                  />
-                  <Button disabled style={{ pointerEvents: 'none' }}>次</Button>
+                  <Form.Item
+                    name="retryMaxCount"
+                    noStyle
+                    rules={[{ required: true, message: '请输入重试次数' }]}
+                  >
+                    <InputNumber
+                      min={1}
+                      max={100}
+                      style={{ width: '100%' }}
+                      placeholder="默认: 10"
+                    />
+                  </Form.Item>
+                  <Button disabled style={{ pointerEvents: 'none', color: 'rgba(0, 0, 0, 0.45)', backgroundColor: '#fafafa', borderColor: '#d9d9d9' }}>次</Button>
                 </Space.Compact>
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 label="错误重试间隔"
-                name="retryIntervalSeconds"
                 extra="每次重试之间的等待时间（1-60秒）"
-                rules={[
-                  { required: true, message: '请输入重试间隔' },
-                  { type: 'number', min: 1, max: 60, message: '请输入1-60之间的数字' }
-                ]}
               >
                 <Space.Compact style={{ width: '100%' }}>
-                  <InputNumber
-                    min={1}
-                    max={60}
-                    style={{ width: '100%' }}
-                    placeholder="默认: 5"
-                  />
-                  <Button disabled style={{ pointerEvents: 'none' }}>秒</Button>
+                  <Form.Item
+                    name="retryIntervalSeconds"
+                    noStyle
+                    rules={[{ required: true, message: '请输入重试间隔' }]}
+                  >
+                    <InputNumber
+                      min={1}
+                      max={60}
+                      style={{ width: '100%' }}
+                      placeholder="默认: 10"
+                    />
+                  </Form.Item>
+                  <Button disabled style={{ pointerEvents: 'none', color: 'rgba(0, 0, 0, 0.45)', backgroundColor: '#fafafa', borderColor: '#d9d9d9' }}>秒</Button>
                 </Space.Compact>
               </Form.Item>
             </Col>

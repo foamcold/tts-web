@@ -54,8 +54,8 @@ export const config = {
   retry: {
     // 最大重试次数（默认10次）
     maxRetries: getEnvNumber('TTS_MAX_RETRIES', 10),
-    // 重试间隔（毫秒，默认5000ms = 5秒）
-    retryIntervalMs: getEnvNumber('TTS_RETRY_INTERVAL_MS', 5000),
+    // 重试间隔（毫秒，默认10000ms = 10秒）
+    retryIntervalMs: getEnvNumber('TTS_RETRY_INTERVAL_MS', 10000),
   },
 
   // 队列相关配置

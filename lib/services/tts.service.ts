@@ -78,7 +78,7 @@ async function getSystemConfig(): Promise<Partial<SystemConfig>> {
   } catch (e) {
     logger.warn('读取系统配置失败，使用默认值', e);
   }
-  return { cacheEnabled: true, cacheMaxCount: 1000, logLevel: 'INFO' };
+  return { cacheEnabled: true, cacheMaxCount: 100, logLevel: 'INFO' };
 }
 
 /**
@@ -211,8 +211,12 @@ async function executeWithRetry(
       logger.warn(`TTS生成失败，第${attempt}/${retryConfig.maxRetries}次尝试: ${error.message}`);
 
       if (attempt < retryConfig.maxRetries) {
-        logger.info(`等待 ${retryConfig.retryIntervalMs}ms 后重试...`);
-        await sleep(retryConfig.retryIntervalMs);
+        // 添加 ±1000ms 的随机抖动
+        const jitter = Math.floor(Math.random() * 2000) - 1000;
+        const delay = Math.max(0, retryConfig.retryIntervalMs + jitter);
+        
+        logger.info(`等待 ${delay}ms (${retryConfig.retryIntervalMs}ms ±1s) 后重试...`);
+        await sleep(delay);
       }
     }
   }
@@ -366,7 +370,7 @@ async function writeToCache(
     // 随机触发缓存清理
     if (Math.random() < config.cache.cleanupProbability) {
       const systemConfig = await getSystemConfig();
-      const maxCount = systemConfig.cacheMaxCount ?? 1000;
+      const maxCount = systemConfig.cacheMaxCount ?? 100;
       await cleanupCache(maxCount);
     }
   } catch (e) {

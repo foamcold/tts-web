@@ -15,8 +15,7 @@ export class TtsrvShim {
     this.tts = {
       data: config
     };
-    // 初始化时随机选择一个设备
-    this.rotateDevice();
+    // 初始化时不生成指纹，直到第一次请求才生成
   }
 
   /**
@@ -24,7 +23,7 @@ export class TtsrvShim {
    */
   rotateDevice() {
     this.currentDevice = getRandomFingerprint();
-    engineLogger.info(`Switched device fingerprint to: ${this.currentDevice['User-Agent']}`);
+    engineLogger.info(`设备指纹已切换为: ${this.currentDevice['User-Agent']}`);
   }
 
   /**
