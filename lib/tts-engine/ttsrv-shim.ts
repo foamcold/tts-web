@@ -28,40 +28,42 @@ export class TtsrvShim {
   }
 
   /**
-   * 获取当前合并了设备指纹的 Headers
+   * 获取当前设备的 Headers 和 TLS 选项
    */
-  private getHeadersWithFingerprint(headers: Record<string, string> = {}): Record<string, string> {
+  private getDeviceOptions(headers: Record<string, string> = {}) {
     if (!this.currentDevice) {
       this.rotateDevice();
     }
     
-    // 1. 准备指纹 Headers
+    const device = this.currentDevice!;
+    const tlsOptions: any = {};
     const fingerprintHeaders: Record<string, string> = {};
-    for (const [key, value] of Object.entries(this.currentDevice!)) {
-      if (value !== undefined) {
+
+    // 分离 Headers 和 TLS 选项
+    for (const [key, value] of Object.entries(device)) {
+      if (value === undefined) continue;
+      
+      if (key.startsWith('__')) {
+        // TLS 选项 (去掉 __ 前缀)
+        tlsOptions[key.substring(2)] = value;
+      } else {
+        // 普通 Header
         fingerprintHeaders[key] = value;
       }
     }
 
-    // 2. 准备最终 Headers，初始包含用户传入的 headers
+    // 合并 Headers (指纹覆盖用户)
     const finalHeaders: Record<string, string> = { ...headers };
-
-    // 3. 强制使用指纹 Headers 覆盖
-    // 遍历 fingerprintHeaders，移除 finalHeaders 中大小写不敏感匹配的键，然后设置新键值
     for (const [fpKey, fpValue] of Object.entries(fingerprintHeaders)) {
       const lowerFpKey = fpKey.toLowerCase();
-      
-      // 查找并删除已存在的同名键（忽略大小写）
       const existingKeys = Object.keys(finalHeaders).filter(k => k.toLowerCase() === lowerFpKey);
       for (const existingKey of existingKeys) {
         delete finalHeaders[existingKey];
       }
-
-      // 设置指纹 Header
       finalHeaders[fpKey] = fpValue;
     }
 
-    return finalHeaders;
+    return { headers: finalHeaders, tlsOptions };
   }
 
   // --- UI 组件模拟 (无操作) ---
@@ -120,13 +122,15 @@ export class TtsrvShim {
   // --- 网络请求 (同步) ---
   httpPost(url: string, body: string, headers: Record<string, string>) {
     try {
-      const finalHeaders = this.getHeadersWithFingerprint(headers);
+      const { headers: finalHeaders, tlsOptions } = this.getDeviceOptions(headers);
+      
       const response = request('POST', url, {
         headers: finalHeaders,
         body: body,
-        // sync-request 默认超时时间很短，需要设置
-        timeout: 10000, // 10秒
+        timeout: 10000,
         retry: true,
+        // 注入 TLS 选项 (sync-request 会透传给 http.request)
+        ...tlsOptions
       });
       
       return {
@@ -148,11 +152,12 @@ export class TtsrvShim {
 
   httpGet(url: string, headers: Record<string, string> = {}) {
      try {
-       const finalHeaders = this.getHeadersWithFingerprint(headers);
+       const { headers: finalHeaders, tlsOptions } = this.getDeviceOptions(headers);
        const response = request('GET', url, {
          headers: finalHeaders,
          timeout: 10000,
          retry: true,
+         ...tlsOptions
        });
        
        return {
@@ -175,10 +180,11 @@ export class TtsrvShim {
    */
   httpGetStream(url: string, headers: Record<string, string> = {}) {
     try {
-      const finalHeaders = this.getHeadersWithFingerprint(headers);
+      const { headers: finalHeaders, tlsOptions } = this.getDeviceOptions(headers);
       const response = request('GET', url, {
         headers: finalHeaders,
-        timeout: 10000
+        timeout: 10000,
+        ...tlsOptions
       });
       if (response.statusCode >= 300) return null;
 
