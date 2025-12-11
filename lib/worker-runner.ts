@@ -19,8 +19,12 @@ export function runPluginInWorker(workerData: any): Promise<any> {
     };
 
     if (!isProd) {
-      // 使用 ts-node/esm 加载器，这是在 worker 中运行 TS 的现代、可靠方法。
-      workerOptions.execArgv = ['--loader', 'ts-node/esm'];
+      // 使用 Node.js 推荐的 register() API 替代已弃用的 --loader 标志
+      // 参考: https://nodejs.org/api/module.html#moduleregisterspecifier-parenturl-options
+      workerOptions.execArgv = [
+        '--import',
+        'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("ts-node/esm", pathToFileURL("./"));'
+      ];
     }
       
     const worker = new Worker(workerPath, workerOptions);
