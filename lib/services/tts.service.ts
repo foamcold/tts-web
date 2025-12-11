@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import stringify from 'fast-json-stable-stringify';
 import { config } from '@/lib/config';
 import { NotFoundError, PluginError, ValidationError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 
 // 定义 TTS 参数的接口
 export interface TTSParams {
@@ -48,6 +49,26 @@ export interface TTSDebugResult {
 }
 
 
+/**
+ * 获取系统配置
+ */
+async function getSystemConfig(): Promise<{ cacheEnabled: boolean; logLevel: string }> {
+  try {
+    const systemConfigRecord = await prisma.config.findUnique({
+      where: { key: 'system-config' }
+    });
+    if (systemConfigRecord) {
+      return JSON.parse(systemConfigRecord.value || '{}');
+    }
+  } catch (e) {
+    logger.warn('读取系统配置失败，使用默认值', e);
+  }
+  return { cacheEnabled: true, logLevel: 'INFO' };
+}
+
+/**
+ * 清理过期缓存
+ */
 async function cleanupCache() {
   const expirationDate = new Date(Date.now() - config.cache.ttlMs);
   const deleteResult = await prisma.tTSCache.deleteMany({
@@ -58,7 +79,7 @@ async function cleanupCache() {
     }
   });
   if (deleteResult.count > 0) {
-    console.log(`Cache cleanup: deleted ${deleteResult.count} old entries`);
+    logger.info(`缓存清理: 已删除 ${deleteResult.count} 条过期记录`);
   }
 }
 
@@ -68,13 +89,17 @@ async function cleanupCache() {
  * @returns 返回音频 Buffer 或调试信息
  */
 export async function generateSpeech(params: TTSParams): Promise<TTSSuccessResult | TTSDebugResult> {
-  // 1. 获取默认配置
+  // 1. 获取系统配置（缓存开关等）
+  const systemConfig = await getSystemConfig();
+  const { cacheEnabled } = systemConfig;
+
+  // 2. 获取默认 TTS 配置
   const defaultConfigRecord = await prisma.config.findUnique({
     where: { key: 'default-tts-config' },
   });
   const defaultConfig = defaultConfigRecord ? JSON.parse(defaultConfigRecord.value || '{}') : {};
 
-  // 2. 合并配置 (优先级: 请求参数 > 数据库默认配置)
+  // 3. 合并配置 (优先级: 请求参数 > 数据库默认配置)
   const effectiveParams = { ...defaultConfig, ...params };
 
   const {
@@ -89,12 +114,12 @@ export async function generateSpeech(params: TTSParams): Promise<TTSSuccessResul
     ...otherConfig
   } = effectiveParams;
 
-  // 3. 校验 pluginId 是否存在
+  // 4. 校验 pluginId 是否存在
   if (!pluginId) {
     throw new ValidationError('Plugin ID is required. Please provide it in the request or set a default plugin.');
   }
 
-  // 4. 获取插件信息
+  // 5. 获取插件信息
   const plugin = await prisma.plugin.findUnique({
     where: { pluginId: pluginId }
   });
@@ -103,13 +128,13 @@ export async function generateSpeech(params: TTSParams): Promise<TTSSuccessResul
     throw new NotFoundError('Plugin not found or disabled');
   }
 
-  // 2. 准备配置和目标音色
+  // 6. 准备配置和目标音色
   const savedConfig = JSON.parse(plugin.config || '{}');
   const runtimeConfig = { ...savedConfig, ...otherConfig };
   const targetVoice = voice || 'default';
 
-  // 3. 缓存处理 (非 debug 模式)
-  if (!debug) {
+  // 7. 缓存处理 (非 debug 模式且缓存已启用)
+  if (!debug && cacheEnabled) {
     const hashParams = {
       pluginId,
       text,
@@ -125,7 +150,7 @@ export async function generateSpeech(params: TTSParams): Promise<TTSSuccessResul
 
     const cached = await prisma.tTSCache.findUnique({ where: { hash: cacheKey } });
     if (cached) {
-      console.log(`Cache hit for ${cacheKey}`);
+      logger.info(`缓存命中: ${cacheKey}`);
       // 将 Buffer 转换为 ArrayBuffer, 并确保类型正确
       const buffer = cached.audio;
       const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
@@ -141,10 +166,10 @@ export async function generateSpeech(params: TTSParams): Promise<TTSSuccessResul
       return { audio: arrayBuffer, contentType: 'audio/mpeg', cache: 'HIT' };
     }
 
-    // 缓存未命中，继续生成
+    logger.debug(`缓存未命中: ${cacheKey}，开始生成音频`);
   }
 
-  // 4. 在 Worker 中执行插件（记录开始时间）
+  // 8. 在 Worker 中执行插件（记录开始时间）
   const startTime = Date.now();
   const result = await runPluginInWorker({
     task: 'getAudio',
@@ -171,7 +196,9 @@ export async function generateSpeech(params: TTSParams): Promise<TTSSuccessResul
     throw new PluginError('Audio generation failed (empty buffer)');
   }
 
-  // 5. 根据是否为 debug 模式返回不同结果
+  logger.debug(`音频生成完成，大小: ${audioBuffer.length} 字节，耗时: ${generationTime}ms`);
+
+  // 9. 根据是否为 debug 模式返回不同结果
   if (debug) {
     return {
       request: {
@@ -194,23 +221,25 @@ export async function generateSpeech(params: TTSParams): Promise<TTSSuccessResul
     };
   }
 
-  // 6. 写入缓存 (非 debug 模式)
-  const hashParams = {
-    pluginId, text, locale, voice: targetVoice, speed, volume, pitch, config: runtimeConfig
-  };
-  const hashStr = stringify(hashParams);
-  const cacheKey = crypto.createHash('md5').update(hashStr).digest('hex');
+  // 10. 写入缓存 (非 debug 模式且缓存已启用)
+  if (cacheEnabled) {
+    const hashParams = {
+      pluginId, text, locale, voice: targetVoice, speed, volume, pitch, config: runtimeConfig
+    };
+    const hashStr = stringify(hashParams);
+    const cacheKey = crypto.createHash('md5').update(hashStr).digest('hex');
 
-  try {
-    await prisma.tTSCache.create({ data: { hash: cacheKey, audio: audioBuffer } });
-    console.log(`Cache written for ${cacheKey}`);
+    try {
+      await prisma.tTSCache.create({ data: { hash: cacheKey, audio: audioBuffer } });
+      logger.info(`缓存写入成功: ${cacheKey}`);
 
-    // 随机触发缓存清理
-    if (Math.random() < config.cache.cleanupProbability) {
-      await cleanupCache();
+      // 随机触发缓存清理
+      if (Math.random() < config.cache.cleanupProbability) {
+        await cleanupCache();
+      }
+    } catch (e) {
+      logger.warn('缓存写入失败', e);
     }
-  } catch (e) {
-    console.warn('Failed to write cache:', e);
   }
 
   const arrayBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength);

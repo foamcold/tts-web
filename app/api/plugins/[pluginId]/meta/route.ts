@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { runPluginInWorker } from '@/lib/worker-runner';
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ pluginId: string }> }
 ) {
+  const startTime = Date.now();
+  const url = new URL(request.url);
+  const path = url.pathname + url.search;
+  
+  logger.info(`收到请求 GET ${path}`);
+  
   try {
     const { pluginId } = await params;
     const plugin = await prisma.plugin.findUnique({
@@ -32,11 +39,14 @@ export async function GET(
       throw error;
     }
 
+    const duration = Date.now() - startTime;
+    logger.info(`请求完成 GET ${path} 200 ${duration}ms`);
     return NextResponse.json(result.meta);
 
 
   } catch (error: any) {
-    console.error('Plugin Meta API Error:', error);
+    const duration = Date.now() - startTime;
+    logger.error(`请求失败 GET ${path} ${duration}ms`, error);
     return NextResponse.json(
       { error: 'Internal Server Error', details: error.message },
       { status: 500 }

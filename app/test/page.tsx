@@ -7,6 +7,7 @@ import { notify } from '@/components/Notification';
 import TTSConfigForm from '@/components/TTSConfigForm';
 import TTSResult from '@/components/TTSResult';
 import { getPlugins, getPluginMeta, generateTTS } from '@/lib/services/api';
+import { clientLogger } from '@/lib/client-logger';
 
 export default function Home() {
   const { Title, Paragraph } = Typography;
@@ -88,13 +89,13 @@ export default function Home() {
     try {
       const result = await generateTTS(values, debugMode);
       if (debugMode) {
-        // 添加调试日志
-        console.log('===== 调试模式返回结果 =====');
-        console.log('完整结果:', result);
-        console.log('result字段:', result.result);
-        console.log('audioBase64存在:', !!result.result?.audioBase64);
-        console.log('audioSize:', result.result?.audioSize);
-        console.log('=============================');
+        // 调试模式日志
+        clientLogger.debug('===== 调试模式返回结果 =====');
+        clientLogger.debug('完整结果:', result);
+        clientLogger.debug('result字段:', result.result);
+        clientLogger.debug('audioBase64存在:', !!result.result?.audioBase64);
+        clientLogger.debug('audioSize:', result.result?.audioSize);
+        clientLogger.debug('=============================');
 
         // 存储完整的调试对象
         setLogs(result);

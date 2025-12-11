@@ -1,6 +1,7 @@
 import * as vm from 'vm';
 import { JavaShim } from './java-shim.js';
 import { TtsrvShim } from './ttsrv-shim.js';
+import { engineLogger } from './engine-logger.js';
 
 export interface TTSPlugin {
   name: string;
@@ -72,7 +73,7 @@ export class PluginExecutor {
       // 执行插件代码
       vm.runInContext(processedCode, this.context);
     } catch (e) {
-      console.error("Plugin init error:", e);
+      engineLogger.error('插件初始化失败', e);
       throw e;
     }
   }

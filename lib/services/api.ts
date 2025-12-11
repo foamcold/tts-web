@@ -1,5 +1,6 @@
 // lib/services/api.ts
 import { notify } from '@/components/Notification';
+import { clientLogger } from '@/lib/client-logger';
 
 // 统一的请求函数
 async function request(url: string, options: RequestInit = {}) {
@@ -11,7 +12,7 @@ async function request(url: string, options: RequestInit = {}) {
     }
     return response.json();
   } catch (error: any) {
-    console.error('API request error:', error);
+    clientLogger.error('API 请求失败', error);
     notify.error(error.message || 'Request failed');
     throw error;
   }
@@ -69,7 +70,7 @@ export const generateTTS = async (values: any, debugMode: boolean) => {
       }
       return blob;
     } catch (error: any) {
-       console.error('API request error (blob):', error);
+       clientLogger.error('API 请求失败 (Blob响应)', error);
        notify.error(error.message || 'Request failed');
        throw error;
     }

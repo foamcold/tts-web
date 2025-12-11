@@ -1,21 +1,33 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Typography, Form } from 'antd';
+import { Card, Typography, Form, Switch, Select, Button, Row, Col, Divider } from 'antd';
+import { SaveOutlined } from '@ant-design/icons';
 import MainLayout from '@/components/MainLayout';
 import TTSConfigForm from '@/components/TTSConfigForm';
 import { getPlugins, getPluginMeta, getConfig, saveConfig } from '@/lib/services/api';
 import { notify } from '@/components/Notification';
 
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
+const { Option } = Select;
+
+// 日志等级选项
+const LOG_LEVEL_OPTIONS = [
+  { value: 'DEBUG', label: 'DEBUG - 调试级别（输出所有日志）' },
+  { value: 'INFO', label: 'INFO - 信息级别（默认）' },
+  { value: 'WARN', label: 'WARN - 警告级别' },
+  { value: 'ERROR', label: 'ERROR - 错误级别（仅输出错误）' },
+];
 
 export default function SettingsPage() {
   const [form] = Form.useForm();
+  const [systemForm] = Form.useForm();
   const [plugins, setPlugins] = useState<any[]>([]);
   const [locales, setLocales] = useState<string[]>([]);
   const [voices, setVoices] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [systemSubmitting, setSystemSubmitting] = useState(false);
 
   const loadPlugins = useCallback(async () => {
     try {
@@ -67,6 +79,7 @@ export default function SettingsPage() {
 
   const loadConfig = useCallback(async (enabledPlugins: any[]) => {
     try {
+      // 加载 TTS 默认配置
       const config = await getConfig('default-tts-config');
       if (config && Object.keys(config).length > 0) {
         form.setFieldsValue(config);
@@ -81,10 +94,22 @@ export default function SettingsPage() {
           }
         }
       }
+
+      // 加载系统配置
+      const systemConfig = await getConfig('system-config');
+      if (systemConfig && Object.keys(systemConfig).length > 0) {
+        systemForm.setFieldsValue(systemConfig);
+      } else {
+        // 设置默认值
+        systemForm.setFieldsValue({
+          cacheEnabled: true,
+          logLevel: 'INFO',
+        });
+      }
     } catch (e) {
       // error handled in api service
     }
-  }, [form]);
+  }, [form, systemForm]);
 
   useEffect(() => {
     const init = async () => {
@@ -94,6 +119,7 @@ export default function SettingsPage() {
     init();
   }, [loadPlugins, loadConfig]);
 
+  // 保存 TTS 默认配置
   const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
@@ -106,9 +132,23 @@ export default function SettingsPage() {
     }
   };
 
+  // 保存系统配置
+  const onSystemFinish = async (values: any) => {
+    setSystemSubmitting(true);
+    try {
+      await saveConfig('system-config', values);
+      notify.success('保存成功', '系统配置已更新。');
+    } catch (e) {
+      // error handled in api service
+    } finally {
+      setSystemSubmitting(false);
+    }
+  };
+
   return (
     <MainLayout>
-      <Card>
+      {/* 默认音频配置卡片 */}
+      <Card style={{ marginBottom: 24 }}>
         <Title level={2}>系统设置</Title>
         <Paragraph>
           在这里配置的参数将作为所有 TTS API 请求的默认值。如果在 API 请求中指定了相同参数，则请求中的值会覆盖此处的默认设置。
@@ -126,6 +166,60 @@ export default function SettingsPage() {
           onLocaleChange={(l) => handlePluginChange(form.getFieldValue('pluginId'), l)}
           mode="settings"
         />
+      </Card>
+
+      {/* 系统选项卡片 */}
+      <Card>
+        <Title level={4} style={{ marginBottom: 16 }}>系统选项</Title>
+        <Form
+          form={systemForm}
+          layout="vertical"
+          onFinish={onSystemFinish}
+          initialValues={{
+            cacheEnabled: true,
+            logLevel: 'INFO',
+          }}
+        >
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item
+                label="启用缓存"
+                name="cacheEnabled"
+                valuePropName="checked"
+                extra="开启后，相同参数的 TTS 请求将使用缓存结果，可提高响应速度"
+              >
+                <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="日志等级"
+                name="logLevel"
+                extra="设置服务端日志输出的最低等级，等级越低输出的日志越详细"
+              >
+                <Select>
+                  {LOG_LEVEL_OPTIONS.map(opt => (
+                    <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={systemSubmitting}
+              icon={<SaveOutlined />}
+              size="large"
+            >
+              保存系统配置
+            </Button>
+          </Form.Item>
+        </Form>
       </Card>
     </MainLayout>
   );

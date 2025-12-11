@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodSchema } from 'zod';
 import { ApiError, ValidationError } from './errors';
+import { logger } from './logger';
 
 // context 参数设为可选，以兼容非动态路由
 type ApiHandler = (req: NextRequest, context?: { params: any }, parsedBody?: any) => Promise<NextResponse>;
@@ -13,6 +14,12 @@ interface HandlerOptions {
 // 返回类型也需要更新
 export function withErrorHandler(handler: ApiHandler, options: HandlerOptions = {}): (req: NextRequest, context: { params: any }) => Promise<NextResponse> {
   return async (req: NextRequest, context: { params: any }) => {
+    const startTime = Date.now();
+    const url = new URL(req.url);
+    const path = url.pathname + url.search;
+    
+    logger.info(`收到请求 ${req.method} ${path}`);
+    
     try {
       let parsedBody;
       
@@ -45,10 +52,14 @@ export function withErrorHandler(handler: ApiHandler, options: HandlerOptions = 
       }
       
       // 2. 执行核心 handler, 传入 context 和 parsedBody
-            return await handler(req, context, parsedBody);
+      const response = await handler(req, context, parsedBody);
+      const duration = Date.now() - startTime;
+      logger.info(`请求完成 ${req.method} ${path} ${response.status} ${duration}ms`);
+      return response;
       
     } catch (error: any) {
-      console.error(`[API Error] ${req.method} ${req.url}:`, error);
+      const duration = Date.now() - startTime;
+      logger.error(`请求失败 ${req.method} ${path} ${duration}ms`, error);
 
       // 3. 统一错误响应处理
       if (error instanceof ApiError) {

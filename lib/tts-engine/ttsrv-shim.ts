@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import CryptoJS from 'crypto-js';
 import request from 'sync-request';
+import { engineLogger } from './engine-logger.js';
 
 /**
  * 模拟 ttsrv 全局对象
@@ -86,7 +87,7 @@ export class TtsrvShim {
         })
       };
     } catch (e) {
-      console.error("httpPost error", e);
+      engineLogger.error('HTTP POST 请求失败', e);
       return {
           code: () => 500,
           status: () => "Internal Error",
@@ -109,7 +110,7 @@ export class TtsrvShim {
          })
        };
      } catch (e) {
-       console.error("httpGet error", e);
+       engineLogger.error('HTTP GET 请求失败', e);
         return {
           code: () => 500,
           body: () => ({ bytes: () => Buffer.alloc(0) })
@@ -127,7 +128,7 @@ export class TtsrvShim {
 
       const buffer = response.body;
       if (!Buffer.isBuffer(buffer)) {
-          console.error("httpGetStream expected a Buffer but received", typeof buffer);
+          engineLogger.error(`httpGetStream 期望返回 Buffer 但收到 ${typeof buffer}`);
           return null; // or handle error appropriately
       }
       let position = 0;
@@ -149,7 +150,7 @@ export class TtsrvShim {
         }
       };
     } catch (e) {
-      console.error("httpGetStream error", e);
+      engineLogger.error('HTTP GET 流请求失败', e);
       return null;
     }
   }
