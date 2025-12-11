@@ -78,7 +78,7 @@ async function getSystemConfig(): Promise<Partial<SystemConfig>> {
   } catch (e) {
     logger.warn('读取系统配置失败，使用默认值', e);
   }
-  return { cacheEnabled: true, logLevel: 'INFO' };
+  return { cacheEnabled: true, cacheMaxCount: 1000, logLevel: 'INFO' };
 }
 
 /**
@@ -127,19 +127,37 @@ function isValidAudio(audioBuffer: Buffer): boolean {
 }
 
 /**
- * 清理过期缓存
+ * 按数量清理缓存
  */
-async function cleanupCache() {
-  const expirationDate = new Date(Date.now() - config.cache.ttlMs);
-  const deleteResult = await prisma.tTSCache.deleteMany({
-    where: {
-      createdAt: {
-        lt: expirationDate
+async function cleanupCache(maxCount: number) {
+  try {
+    const currentCount = await prisma.tTSCache.count();
+    const excessCount = currentCount - maxCount;
+
+    if (excessCount > 0) {
+      logger.info(`缓存数量 ${currentCount} 超出上限 ${maxCount}，开始清理...`);
+      // 找出最旧的记录
+      const oldestRecords = await prisma.tTSCache.findMany({
+        orderBy: { createdAt: 'asc' },
+        take: excessCount,
+        select: { id: true },
+      });
+
+      const idsToDelete = oldestRecords.map(record => record.id);
+
+      // 删除最旧的记录
+      const deleteResult = await prisma.tTSCache.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
+
+      if (deleteResult.count > 0) {
+        logger.info(`缓存清理: 成功删除 ${deleteResult.count} 条最旧的记录`);
       }
+    } else {
+      logger.debug(`缓存数量 ${currentCount} 未超出上限 ${maxCount}，无需清理`);
     }
-  });
-  if (deleteResult.count > 0) {
-    logger.info(`缓存清理: 已删除 ${deleteResult.count} 条过期记录`);
+  } catch (error) {
+    logger.error('缓存清理失败', error);
   }
 }
 
@@ -347,7 +365,9 @@ async function writeToCache(
 
     // 随机触发缓存清理
     if (Math.random() < config.cache.cleanupProbability) {
-      await cleanupCache();
+      const systemConfig = await getSystemConfig();
+      const maxCount = systemConfig.cacheMaxCount ?? 1000;
+      await cleanupCache(maxCount);
     }
   } catch (e) {
     logger.warn('缓存写入失败', e);

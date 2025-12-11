@@ -22,6 +22,7 @@ const LOG_LEVEL_OPTIONS = [
 export default function SettingsPage() {
   const [form] = Form.useForm();
   const [systemForm] = Form.useForm();
+  const cacheEnabled = Form.useWatch('cacheEnabled', systemForm);
   const [plugins, setPlugins] = useState<any[]>([]);
   const [locales, setLocales] = useState<string[]>([]);
   const [voices, setVoices] = useState<Record<string, string>>({});
@@ -103,6 +104,7 @@ export default function SettingsPage() {
         // 设置默认值
         systemForm.setFieldsValue({
           cacheEnabled: true,
+          cacheMaxCount: 1000,
           logLevel: 'INFO',
           retryMaxCount: 10,
           retryIntervalSeconds: 5,
@@ -180,34 +182,46 @@ export default function SettingsPage() {
           onFinish={onSystemFinish}
           initialValues={{
             cacheEnabled: true,
+            cacheMaxCount: 1000,
             logLevel: 'INFO',
             retryMaxCount: 10,
             retryIntervalSeconds: 5,
             queueTimeoutSeconds: 300,
           }}
         >
+          <Title level={5} style={{ marginBottom: 16 }}>缓存设置</Title>
+          <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+            开启后，相同参数的 TTS 请求将使用缓存结果以提高响应速度。当缓存数量超过上限时，系统将自动清理最旧的记录。
+          </Paragraph>
           <Row gutter={24}>
             <Col span={12}>
               <Form.Item
                 label="启用缓存"
                 name="cacheEnabled"
                 valuePropName="checked"
-                extra="开启后，相同参数的 TTS 请求将使用缓存结果，可提高响应速度"
               >
                 <Switch checkedChildren="开启" unCheckedChildren="关闭" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                label="日志等级"
-                name="logLevel"
-                extra="设置服务端日志输出的最低等级，等级越低输出的日志越详细"
+                label="缓存数量上限"
+                name="cacheMaxCount"
+                rules={[
+                  { required: true, message: '请输入缓存数量' },
+                  { type: 'number', min: 0, max: 100000, message: '请输入0-100000之间的数字' }
+                ]}
               >
-                <Select>
-                  {LOG_LEVEL_OPTIONS.map(opt => (
-                    <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-                  ))}
-                </Select>
+                <Space.Compact style={{ width: '100%' }}>
+                  <InputNumber
+                    min={0}
+                    max={100000}
+                    style={{ width: '100%' }}
+                    placeholder="默认: 1000"
+                    disabled={!cacheEnabled}
+                  />
+                  <Button disabled style={{ pointerEvents: 'none' }}>条</Button>
+                </Space.Compact>
               </Form.Item>
             </Col>
           </Row>
@@ -291,6 +305,28 @@ export default function SettingsPage() {
                   />
                   <Button disabled style={{ pointerEvents: 'none' }}>秒</Button>
                 </Space.Compact>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Title level={5} style={{ marginBottom: 16 }}>高级设置</Title>
+           <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+            此处的设置为系统的高级选项，修改时请确认了解其作用。
+          </Paragraph>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item
+                label="日志等级"
+                name="logLevel"
+                extra="设置服务端日志输出的最低等级，等级越低输出的日志越详细"
+              >
+                <Select>
+                  {LOG_LEVEL_OPTIONS.map(opt => (
+                    <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>

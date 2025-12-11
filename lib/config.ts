@@ -46,10 +46,8 @@ export const config = {
 
   // 缓存相关配置
   cache: {
-    // 缓存清理的概率 (0 到 1 之间)
+    // 缓存清理的概率 (0 到 1 之间)，保留用于手动触发
     cleanupProbability: getEnvFloat('CACHE_CLEANUP_PROBABILITY', 0.01),
-    // 缓存过期时间 (毫秒)
-    ttlMs: getEnvNumber('CACHE_TTL_MS', 24 * 60 * 60 * 1000), // 1 day
   },
 
   // 重试相关配置

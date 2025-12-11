@@ -16,12 +16,14 @@ export interface Plugin {
  */
 export interface SystemConfig {
   cacheEnabled: boolean;
-  logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+  cacheMaxCount: number; // 缓存数量上限
   // 重试配置
   retryMaxCount: number;
   retryIntervalSeconds: number;
   // 队列配置
   queueTimeoutSeconds: number;
+  // 高级配置
+  logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 }
 
 /**
