@@ -30,6 +30,7 @@
 - [📂 项目结构](#-项目结构)
 - [📘 使用指南](#-使用指南)
 - [❓ 常见问题](#-常见问题)
+- [🔌 API 文档](#-api-文档)
 - [🤝 贡献](#-贡献)
 - [📄 开源许可](#-开源许可)
 
@@ -401,17 +402,251 @@ import request from 'sync-request';
 
 ---
 
-## 🤝 贡献
+## 🔌 API 文档
 
-欢迎提交 Pull Request 或 Issue 来为本项目做出贡献！
+### 生成音频 API
 
-### 贡献流程
+TTS Web 提供 RESTful API 接口，支持通过 HTTP 请求生成语音音频。
 
-1. Fork 本仓库
-2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 Pull Request
+#### 接口信息
+
+| 项目 | 说明 |
+|------|------|
+| **URL** | `/api/tts` |
+| **方法** | `GET` / `POST` |
+| **响应类型** | 音频二进制数据（成功时）或 JSON（调试模式/错误时） |
+
+#### 请求参数
+
+| 参数名 | 类型 | 必填 | 说明 | 默认值 |
+|--------|------|------|------|--------|
+| `text` | string | ✅ 是 | 要合成的文本内容 | - |
+| `pluginId` | string | 否 | 使用的 TTS 插件 ID | 系统默认插件 |
+| `voice` | string | 否 | 声音名称/ID | 插件默认声音 |
+| `locale` | string | 否 | 语言区域代码（如 `zh-CN`） | 插件默认语言 |
+| `speed` | number | 否 | 语速，范围 0-100 | 50 |
+| `volume` | number | 否 | 音量，范围 0-100 | 50 |
+| `pitch` | number | 否 | 音调，范围 0-100 | 50 |
+| `debug` | boolean | 否 | 启用调试模式，返回 JSON 而非音频 | false |
+
+> **💡 提示**
+> 除上述参数外，API 还支持传递插件特定的自定义参数，这些参数会直接传递给对应的 TTS 插件处理。
+
+#### 响应头
+
+| 响应头 | 说明 |
+|--------|------|
+| `Content-Type` | 音频 MIME 类型（如 `audio/mpeg`、`audio/wav`） |
+| `Content-Length` | 音频数据大小（字节） |
+| `X-TTS-Cache` | 缓存状态（`hit` 表示命中缓存，`miss` 表示新生成） |
+
+#### 请求示例
+
+##### 1. GET 请求（基础用法）
+
+使用 URL 查询参数传递数据：
+
+```bash
+# 基础请求 - 仅传递文本
+curl "http://localhost:3000/api/tts?text=你好，世界" --output hello.mp3
+
+# 完整参数请求
+curl "http://localhost:3000/api/tts?text=欢迎使用TTS服务&pluginId=edge-tts&voice=zh-CN-XiaoxiaoNeural&speed=60&volume=80&pitch=50" --output welcome.mp3
+```
+
+##### 2. POST 请求（JSON Body）
+
+使用 JSON 格式传递数据，适合传递较长文本或复杂参数：
+
+```bash
+# 基础 POST 请求
+curl -X POST "http://localhost:3000/api/tts" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "这是一段测试文本"}' \
+  --output test.mp3
+
+# 完整参数 POST 请求
+curl -X POST "http://localhost:3000/api/tts" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "欢迎使用 TTS Web 文本转语音服务",
+    "pluginId": "edge-tts",
+    "voice": "zh-CN-YunxiNeural",
+    "locale": "zh-CN",
+    "speed": 55,
+    "volume": 75,
+    "pitch": 50
+  }' \
+  --output output.mp3
+```
+
+##### 3. POST 请求（Form Data）
+
+使用表单格式传递数据：
+
+```bash
+curl -X POST "http://localhost:3000/api/tts" \
+  -d "text=表单提交的文本内容" \
+  -d "speed=60" \
+  -d "volume=80" \
+  --output form-output.mp3
+```
+
+##### 4. 调试模式
+
+启用调试模式返回 JSON 信息而非音频数据：
+
+```bash
+curl "http://localhost:3000/api/tts?text=调试测试&debug=true"
+```
+
+响应示例：
+
+```json
+{
+  "success": true,
+  "params": {
+    "text": "调试测试",
+    "pluginId": "edge-tts",
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "speed": 50,
+    "volume": 50,
+    "pitch": 50
+  },
+  "plugin": {
+    "id": "edge-tts",
+    "name": "Edge TTS"
+  }
+}
+```
+
+#### 编程语言示例
+
+##### JavaScript / Node.js
+
+```javascript
+// 使用 fetch API
+async function generateSpeech(text, options = {}) {
+  const response = await fetch('http://localhost:3000/api/tts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      ...options,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`TTS 请求失败: ${response.status}`);
+  }
+
+  // 获取音频 Blob
+  const audioBlob = await response.blob();
+  
+  // 检查缓存状态
+  const cacheStatus = response.headers.get('X-TTS-Cache');
+  console.log(`缓存状态: ${cacheStatus}`);
+  
+  return audioBlob;
+}
+
+// 使用示例
+const audio = await generateSpeech('你好，世界', {
+  voice: 'zh-CN-XiaoxiaoNeural',
+  speed: 60,
+});
+```
+
+##### Python
+
+```python
+import requests
+
+def generate_speech(text, **options):
+    """
+    调用 TTS API 生成语音
+    """
+    url = "http://localhost:3000/api/tts"
+    payload = {"text": text, **options}
+    
+    response = requests.post(url, json=payload)
+    response.raise_for_status()
+    
+    # 获取缓存状态
+    cache_status = response.headers.get("X-TTS-Cache")
+    print(f"缓存状态: {cache_status}")
+    
+    return response.content
+
+# 使用示例
+audio_data = generate_speech(
+    "你好，这是一段测试语音",
+    voice="zh-CN-YunxiNeural",
+    speed=55,
+    volume=80
+)
+
+# 保存音频文件
+with open("output.mp3", "wb") as f:
+    f.write(audio_data)
+```
+
+##### PHP
+
+```php
+<?php
+
+function generateSpeech(string $text, array $options = []): string
+{
+    $url = "http://localhost:3000/api/tts";
+    $data = array_merge(['text' => $text], $options);
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode !== 200) {
+        throw new Exception("TTS 请求失败: HTTP $httpCode");
+    }
+    
+    return $response;
+}
+
+// 使用示例
+$audio = generateSpeech("你好，世界", [
+    'voice' => 'zh-CN-XiaoxiaoNeural',
+    'speed' => 60
+]);
+
+file_put_contents("output.mp3", $audio);
+```
+
+#### 错误响应
+
+当请求发生错误时，API 返回 JSON 格式的错误信息：
+
+```json
+{
+  "error": "Text is required",
+  "code": "VALIDATION_ERROR"
+}
+```
+
+常见错误码：
+
+| 错误码 | HTTP 状态码 | 说明 |
+|--------|-------------|------|
+| `VALIDATION_ERROR` | 400 | 请求参数验证失败 |
+| `PLUGIN_NOT_FOUND` | 404 | 指定的插件不存在 |
+| `TTS_ERROR` | 500 | TTS 服务内部错误 |
 
 ---
 

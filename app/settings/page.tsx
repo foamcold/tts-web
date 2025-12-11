@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Typography, Form, Switch, Select, Button, Row, Col, Divider } from 'antd';
+import { Card, Typography, Form, Switch, Select, Button, Row, Col, Divider, InputNumber, Space } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import MainLayout from '@/components/MainLayout';
 import TTSConfigForm from '@/components/TTSConfigForm';
@@ -104,6 +104,9 @@ export default function SettingsPage() {
         systemForm.setFieldsValue({
           cacheEnabled: true,
           logLevel: 'INFO',
+          retryMaxCount: 10,
+          retryIntervalSeconds: 5,
+          queueTimeoutSeconds: 300,
         });
       }
     } catch (e) {
@@ -178,6 +181,9 @@ export default function SettingsPage() {
           initialValues={{
             cacheEnabled: true,
             logLevel: 'INFO',
+            retryMaxCount: 10,
+            retryIntervalSeconds: 5,
+            queueTimeoutSeconds: 300,
           }}
         >
           <Row gutter={24}>
@@ -202,6 +208,89 @@ export default function SettingsPage() {
                     <Option key={opt.value} value={opt.value}>{opt.label}</Option>
                   ))}
                 </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Title level={5} style={{ marginBottom: 16 }}>队列设置</Title>
+          <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+            TTS 请求会按插件分别排队处理，确保每个请求完整执行后再处理下一个。
+          </Paragraph>
+          
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item
+                label="队列等待超时"
+                name="queueTimeoutSeconds"
+                extra="请求在队列中的最大等待时间（30-600秒）"
+                rules={[
+                  { required: true, message: '请输入超时时间' },
+                  { type: 'number', min: 30, max: 600, message: '请输入30-600之间的数字' }
+                ]}
+              >
+                <Space.Compact style={{ width: '100%' }}>
+                  <InputNumber
+                    min={30}
+                    max={600}
+                    style={{ width: '100%' }}
+                    placeholder="默认: 300"
+                  />
+                  <Button disabled style={{ pointerEvents: 'none' }}>秒</Button>
+                </Space.Compact>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Title level={5} style={{ marginBottom: 16 }}>错误重试设置</Title>
+          <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+            当 TTS 生成失败时，系统会自动重试。您可以配置重试次数和每次重试之间的间隔时间。
+          </Paragraph>
+          
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item
+                label="错误重试次数"
+                name="retryMaxCount"
+                extra="TTS 生成失败时的最大重试次数（1-100）"
+                rules={[
+                  { required: true, message: '请输入重试次数' },
+                  { type: 'number', min: 1, max: 100, message: '请输入1-100之间的数字' }
+                ]}
+              >
+                <Space.Compact style={{ width: '100%' }}>
+                  <InputNumber
+                    min={1}
+                    max={100}
+                    style={{ width: '100%' }}
+                    placeholder="默认: 10"
+                  />
+                  <Button disabled style={{ pointerEvents: 'none' }}>次</Button>
+                </Space.Compact>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="错误重试间隔"
+                name="retryIntervalSeconds"
+                extra="每次重试之间的等待时间（1-60秒）"
+                rules={[
+                  { required: true, message: '请输入重试间隔' },
+                  { type: 'number', min: 1, max: 60, message: '请输入1-60之间的数字' }
+                ]}
+              >
+                <Space.Compact style={{ width: '100%' }}>
+                  <InputNumber
+                    min={1}
+                    max={60}
+                    style={{ width: '100%' }}
+                    placeholder="默认: 5"
+                  />
+                  <Button disabled style={{ pointerEvents: 'none' }}>秒</Button>
+                </Space.Compact>
               </Form.Item>
             </Col>
           </Row>

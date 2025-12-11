@@ -16,6 +16,20 @@ function getEnvNumber(key: string, defaultValue: number): number {
   return defaultValue;
 }
 
+/**
+ * 从环境变量中读取浮点数，如果无效则返回默认值
+ */
+function getEnvFloat(key: string, defaultValue: number): number {
+  const value = process.env[key];
+  if (value) {
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return defaultValue;
+}
+
 export const config = {
   // Worker 相关配置
   worker: {
@@ -33,8 +47,22 @@ export const config = {
   // 缓存相关配置
   cache: {
     // 缓存清理的概率 (0 到 1 之间)
-    cleanupProbability: getEnvNumber('CACHE_CLEANUP_PROBABILITY', 0.01),
+    cleanupProbability: getEnvFloat('CACHE_CLEANUP_PROBABILITY', 0.01),
     // 缓存过期时间 (毫秒)
     ttlMs: getEnvNumber('CACHE_TTL_MS', 24 * 60 * 60 * 1000), // 1 day
+  },
+
+  // 重试相关配置
+  retry: {
+    // 最大重试次数（默认10次）
+    maxRetries: getEnvNumber('TTS_MAX_RETRIES', 10),
+    // 重试间隔（毫秒，默认5000ms = 5秒）
+    retryIntervalMs: getEnvNumber('TTS_RETRY_INTERVAL_MS', 5000),
+  },
+
+  // 队列相关配置
+  queue: {
+    // 请求在队列中的最大等待时间（毫秒，默认5分钟）
+    maxWaitTimeMs: getEnvNumber('QUEUE_MAX_WAIT_MS', 300000),
   },
 };
