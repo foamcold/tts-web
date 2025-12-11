@@ -106,6 +106,9 @@ export class PluginExecutor {
     const plugin = this.getPluginJS();
     if (!plugin) throw new Error("PluginJS not found");
 
+    // 每次生成音频前切换设备指纹
+    this.ttsrvShim.rotateDevice();
+
     // 插件中的 getAudioStream 通常是同步的（在我们 mock 了网络请求后）
     // 或者它返回一个 Java byte array
 

@@ -2,17 +2,66 @@ import * as crypto from 'crypto';
 import CryptoJS from 'crypto-js';
 import request from 'sync-request';
 import { engineLogger } from './engine-logger.js';
+import { getRandomFingerprint, DeviceFingerprint } from './device-fingerprints.js';
 
 /**
  * 模拟 ttsrv 全局对象
  */
 export class TtsrvShim {
   public tts: { data: Record<string, string> };
+  private currentDevice: DeviceFingerprint | null = null;
 
   constructor(config: Record<string, string> = {}) {
     this.tts = {
       data: config
     };
+    // 初始化时随机选择一个设备
+    this.rotateDevice();
+  }
+
+  /**
+   * 切换当前模拟的设备指纹
+   */
+  rotateDevice() {
+    this.currentDevice = getRandomFingerprint();
+    engineLogger.info(`Switched device fingerprint to: ${this.currentDevice['User-Agent']}`);
+  }
+
+  /**
+   * 获取当前合并了设备指纹的 Headers
+   */
+  private getHeadersWithFingerprint(headers: Record<string, string> = {}): Record<string, string> {
+    if (!this.currentDevice) {
+      this.rotateDevice();
+    }
+    
+    // 1. 准备指纹 Headers
+    const fingerprintHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(this.currentDevice!)) {
+      if (value !== undefined) {
+        fingerprintHeaders[key] = value;
+      }
+    }
+
+    // 2. 准备最终 Headers，初始包含用户传入的 headers
+    const finalHeaders: Record<string, string> = { ...headers };
+
+    // 3. 强制使用指纹 Headers 覆盖
+    // 遍历 fingerprintHeaders，移除 finalHeaders 中大小写不敏感匹配的键，然后设置新键值
+    for (const [fpKey, fpValue] of Object.entries(fingerprintHeaders)) {
+      const lowerFpKey = fpKey.toLowerCase();
+      
+      // 查找并删除已存在的同名键（忽略大小写）
+      const existingKeys = Object.keys(finalHeaders).filter(k => k.toLowerCase() === lowerFpKey);
+      for (const existingKey of existingKeys) {
+        delete finalHeaders[existingKey];
+      }
+
+      // 设置指纹 Header
+      finalHeaders[fpKey] = fpValue;
+    }
+
+    return finalHeaders;
   }
 
   // --- UI 组件模拟 (无操作) ---
@@ -71,8 +120,9 @@ export class TtsrvShim {
   // --- 网络请求 (同步) ---
   httpPost(url: string, body: string, headers: Record<string, string>) {
     try {
+      const finalHeaders = this.getHeadersWithFingerprint(headers);
       const response = request('POST', url, {
-        headers: headers,
+        headers: finalHeaders,
         body: body,
         // sync-request 默认超时时间很短，需要设置
         timeout: 10000, // 10秒
@@ -96,9 +146,11 @@ export class TtsrvShim {
     }
   }
 
-  httpGet(url: string) {
+  httpGet(url: string, headers: Record<string, string> = {}) {
      try {
+       const finalHeaders = this.getHeadersWithFingerprint(headers);
        const response = request('GET', url, {
+         headers: finalHeaders,
          timeout: 10000,
          retry: true,
        });
@@ -121,9 +173,13 @@ export class TtsrvShim {
   /**
    * 返回一个模拟的 InputStream
    */
-  httpGetStream(url: string) {
+  httpGetStream(url: string, headers: Record<string, string> = {}) {
     try {
-      const response = request('GET', url, { timeout: 10000 });
+      const finalHeaders = this.getHeadersWithFingerprint(headers);
+      const response = request('GET', url, {
+        headers: finalHeaders,
+        timeout: 10000
+      });
       if (response.statusCode >= 300) return null;
 
       const buffer = response.body;
