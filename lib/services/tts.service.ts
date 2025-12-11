@@ -406,7 +406,12 @@ async function writeToCache(
       const maxCount = systemConfig.cacheMaxCount ?? 100;
       await cleanupCache(maxCount);
     }
-  } catch (e) {
+  } catch (e: any) {
+    // P2002 是 Prisma 的唯一约束冲突错误代码，表示缓存已存在
+    if (e.code === 'P2002') {
+      logger.debug(`缓存已存在，跳过写入: ${cacheKey}`);
+      return;
+    }
     logger.warn('缓存写入失败', e);
   }
 }
